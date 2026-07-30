@@ -1,109 +1,286 @@
-"""
-app.py
+"""Streamlit interface for the BRFSS diabetes screening model."""
 
-Streamlit app for the Diabetes Risk Screening tool.
-Loads the trained model (src/model.pkl) and lets a user enter basic
-health/demographic values to get a risk prediction.
+from pathlib import Path
 
-Run locally with:
-    streamlit run app.py
-"""
-
-import json
 import joblib
-import numpy as np
 import pandas as pd
 import streamlit as st
 
-MODEL_PATH = "src/model.pkl"
-METRICS_PATH = "src/metrics.json"
+from src.modeling import explain_prediction, risk_band
+from src.schema import (
+    AGE_OPTIONS,
+    EDUCATION_OPTIONS,
+    FEATURE_COLUMNS,
+    FEATURE_LABELS,
+    GENERAL_HEALTH_OPTIONS,
+    INCOME_OPTIONS,
+)
 
-st.set_page_config(page_title="Diabetes Risk Screening", page_icon="🩺", layout="centered")
+ROOT = Path(__file__).resolve().parent
+MODEL_PATH = ROOT / "artifacts" / "model.joblib"
+
+st.set_page_config(
+    page_title="Diabetes Risk Screening",
+    page_icon="🩺",
+    layout="centered",
+)
 
 
 @st.cache_resource
-def load_model():
-    bundle = joblib.load(MODEL_PATH)
-    return bundle["model"], bundle["model_name"], bundle["features"]
+def load_model_bundle() -> dict:
+    """Load the complete pipeline and its evaluation metadata once."""
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            "The trained model is missing. Run `python -m src.train_model` first."
+        )
+    return joblib.load(MODEL_PATH)
 
 
-@st.cache_data
-def load_metrics():
-    try:
-        with open(METRICS_PATH) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return None
+def yes_no(label: str, help_text: str | None = None, default: str = "No") -> int:
+    """Render a consistent yes/no survey question."""
+    options = ["No", "Yes"]
+    return int(
+        st.selectbox(
+            label,
+            options,
+            index=options.index(default),
+            help=help_text,
+        )
+        == "Yes"
+    )
 
 
-model, model_name, feature_cols = load_model()
-metrics = load_metrics()
+try:
+    bundle = load_model_bundle()
+except (FileNotFoundError, KeyError, ValueError) as error:
+    st.error(f"Unable to load the model: {error}")
+    st.stop()
 
-st.title("🩺 Diabetes Risk Screening")
+pipeline = bundle["pipeline"]
+
+st.title("Diabetes Risk Screening")
 st.write(
-    "This tool estimates diabetes risk from basic health indicators, based on the "
-    "Pima Indians Diabetes dataset. It is an educational demo, **not** a medical "
-    "diagnosis — please consult a healthcare professional for real medical advice."
+    "This educational tool uses answers similar to the CDC's 2015 BRFSS health "
+    "survey to estimate whether a response pattern resembles the dataset's "
+    "**prediabetes/diabetes group** or its **no-diabetes group**."
+)
+st.warning(
+    "This is a screening demonstration, not a diagnosis or a prediction of your "
+    "future health. Survey data cannot replace A1C, fasting-glucose, or other "
+    "testing interpreted by a qualified healthcare professional."
 )
 
-st.divider()
-st.subheader("Enter patient information")
+with st.form("screening_form"):
+    st.subheader("Health history")
+    left, right = st.columns(2)
 
-col1, col2 = st.columns(2)
-
-with col1:
-    pregnancies = st.number_input("Pregnancies", min_value=0, max_value=20, value=1, step=1)
-    glucose = st.number_input("Glucose (mg/dL)", min_value=0, max_value=300, value=120)
-    blood_pressure = st.number_input("Blood Pressure (mm Hg)", min_value=0, max_value=200, value=70)
-    skin_thickness = st.number_input("Skin Thickness (mm)", min_value=0, max_value=100, value=20)
-
-with col2:
-    insulin = st.number_input("Insulin (mu U/mL)", min_value=0, max_value=900, value=80)
-    bmi = st.number_input("BMI", min_value=0.0, max_value=70.0, value=25.0, step=0.1)
-    dpf = st.number_input(
-        "Diabetes Pedigree Function",
-        min_value=0.0,
-        max_value=3.0,
-        value=0.5,
-        step=0.01,
-        help="A score reflecting family history / genetic predisposition to diabetes.",
-    )
-    age = st.number_input("Age", min_value=1, max_value=120, value=30, step=1)
-
-st.divider()
-
-if st.button("Assess risk", type="primary"):
-    input_df = pd.DataFrame(
-        [[pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, dpf, age]],
-        columns=feature_cols,
-    )
-
-    prediction = model.predict(input_df)[0]
-    probability = model.predict_proba(input_df)[0][1]
-
-    if prediction == 1:
-        st.error(f"⚠️ Higher risk of diabetes — estimated probability: {probability:.1%}")
-    else:
-        st.success(f"✅ Lower risk of diabetes — estimated probability: {probability:.1%}")
-
-    st.progress(min(max(probability, 0.0), 1.0))
-    st.caption(
-        "This estimate is based on a machine learning model trained on historical data "
-        "and should not replace professional medical evaluation."
-    )
-
-with st.expander("ℹ️ About this model"):
-    st.write(f"**Model used:** {model_name}")
-    if metrics and model_name in metrics:
-        m = metrics[model_name]
-        st.write(
-            f"- Accuracy: {m['accuracy']:.2%}\n"
-            f"- Precision: {m['precision']:.2%}\n"
-            f"- Recall: {m['recall']:.2%}\n"
-            f"- F1 score: {m['f1']:.2%}\n"
-            f"- ROC-AUC: {m['roc_auc']:.3f}"
+    with left:
+        high_bp = yes_no("Have you been told you have high blood pressure?")
+        high_chol = yes_no("Have you been told you have high cholesterol?")
+        chol_check = yes_no(
+            "Was your cholesterol checked within the past 5 years?", default="Yes"
         )
+        stroke = yes_no("Have you ever been told you had a stroke?")
+        heart_disease = yes_no(
+            "Have you had coronary heart disease or a heart attack?"
+        )
+        diff_walk = yes_no(
+            "Do you have serious difficulty walking or climbing stairs?"
+        )
+
+    with right:
+        bmi = st.number_input(
+            "Body Mass Index (BMI)",
+            min_value=12,
+            max_value=98,
+            value=25,
+            step=1,
+            help="The cleaned BRFSS dataset stores BMI as a whole number.",
+        )
+        general_health = GENERAL_HEALTH_OPTIONS[
+            st.selectbox("How would you rate your general health?", GENERAL_HEALTH_OPTIONS)
+        ]
+        mental_health = st.number_input(
+            "Poor mental-health days during the past 30 days",
+            min_value=0,
+            max_value=30,
+            value=0,
+            step=1,
+        )
+        physical_health = st.number_input(
+            "Poor physical-health days during the past 30 days",
+            min_value=0,
+            max_value=30,
+            value=0,
+            step=1,
+        )
+
+    st.subheader("Lifestyle and access to care")
+    left, right = st.columns(2)
+
+    with left:
+        smoker = yes_no("Have you smoked at least 100 cigarettes in your lifetime?")
+        physical_activity = yes_no(
+            "Did you do physical activity outside work in the past 30 days?",
+            default="Yes",
+        )
+        fruits = yes_no("Do you eat fruit at least once per day?", default="Yes")
+        vegetables = yes_no(
+            "Do you eat vegetables at least once per day?", default="Yes"
+        )
+
+    with right:
+        heavy_alcohol = yes_no(
+            "Does your survey response meet the BRFSS heavy-alcohol threshold?"
+        )
+        healthcare = yes_no("Do you have healthcare coverage?", default="Yes")
+        no_doctor_cost = yes_no(
+            "In the past year, did cost prevent you from seeing a doctor?"
+        )
+
+    st.subheader("Demographic survey categories")
+    left, right = st.columns(2)
+
+    with left:
+        age = AGE_OPTIONS[st.selectbox("Age group", AGE_OPTIONS)]
+        education = EDUCATION_OPTIONS[
+            st.selectbox("Highest education level", EDUCATION_OPTIONS, index=4)
+        ]
+
+    with right:
+        income = INCOME_OPTIONS[
+            st.selectbox("Annual household income", INCOME_OPTIONS, index=5)
+        ]
+        sex = int(
+            st.selectbox(
+                "Sex category recorded by the 2015 survey",
+                ["Female", "Male"],
+                help=(
+                    "The cleaned historical dataset contains only this binary "
+                    "coding. This is a limitation of the data, not a statement "
+                    "about gender identity."
+                ),
+            )
+            == "Male"
+        )
+
+    submitted = st.form_submit_button("Estimate screening signal", type="primary")
+
+if submitted:
+    answers = {
+        "HighBP": high_bp,
+        "HighChol": high_chol,
+        "CholCheck": chol_check,
+        "BMI": bmi,
+        "Smoker": smoker,
+        "Stroke": stroke,
+        "HeartDiseaseorAttack": heart_disease,
+        "PhysActivity": physical_activity,
+        "Fruits": fruits,
+        "Veggies": vegetables,
+        "HvyAlcoholConsump": heavy_alcohol,
+        "AnyHealthcare": healthcare,
+        "NoDocbcCost": no_doctor_cost,
+        "GenHlth": general_health,
+        "MentHlth": mental_health,
+        "PhysHlth": physical_health,
+        "DiffWalk": diff_walk,
+        "Sex": sex,
+        "Age": age,
+        "Education": education,
+        "Income": income,
+    }
+    input_row = pd.DataFrame([answers], columns=FEATURE_COLUMNS)
+    probability = float(pipeline.predict_proba(input_row)[0, 1])
+    band = risk_band(
+        probability,
+        bundle["low_threshold"],
+        bundle["screening_threshold"],
+    )
+
+    st.divider()
+    st.subheader("Result")
+    st.metric("Model-estimated likelihood", f"{probability:.1%}")
+
+    if band == "Elevated screening signal":
+        st.error(band)
+    elif band == "Moderate screening signal":
+        st.warning(band)
+    else:
+        st.success(band)
+
+    st.caption(
+        "The bands are statistical operating points selected from training data; "
+        "they are not clinical diagnostic cutoffs."
+    )
+
+    st.subheader("What most affected this model output?")
+    explanations = explain_prediction(
+        pipeline,
+        input_row,
+        bundle["reference_values"],
+        top_n=5,
+    )
+    meaningful = [item for item in explanations if abs(item["effect"]) >= 0.001]
+    if meaningful:
+        for item in meaningful:
+            direction = "raised" if item["effect"] > 0 else "lowered"
+            st.write(
+                f"- **{FEATURE_LABELS[item['feature']]}** {direction} the model "
+                f"score by about **{abs(item['effect']):.1%}** compared with the "
+                "typical training-set value for that one feature."
+            )
+    else:
+        st.write(
+            "No single answer changed the score substantially compared with the "
+            "typical training profile."
+        )
+
+    st.caption(
+        "These comparisons describe this model's behavior. They do not prove that "
+        "a factor causes or prevents diabetes."
+    )
+    st.info(
+        "If you are concerned about diabetes, discuss appropriate screening with "
+        "a healthcare professional. Do not change medication or treatment based "
+        "on this demonstration."
+    )
+
+with st.expander("How well did the model perform?"):
+    metrics = bundle["test_metrics"]
     st.write(
-        "Dataset: [Pima Indians Diabetes Dataset]"
-        "(https://www.kaggle.com/datasets/mathchi/diabetes-data-set)"
+        "These results come from the held-out test set, which was not used to "
+        "choose the model or its screening threshold."
+    )
+    first, second, third = st.columns(3)
+    first.metric("Accuracy", f"{metrics['accuracy']:.1%}")
+    second.metric("Recall", f"{metrics['recall']:.1%}")
+    third.metric("Precision", f"{metrics['precision']:.1%}")
+
+    st.write(
+        f"**ROC-AUC:** {metrics['roc_auc']:.3f}  \n"
+        f"**PR-AUC:** {metrics['pr_auc']:.3f}  \n"
+        f"**Specificity:** {metrics['specificity']:.1%}  \n"
+        f"**Brier score:** {metrics['brier_score']:.3f}"
+    )
+    matrix = metrics["confusion_matrix"]
+    st.write(
+        "**Confusion-matrix counts:** "
+        f"{matrix['true_positive']:,} true positives, "
+        f"{matrix['false_negative']:,} false negatives, "
+        f"{matrix['true_negative']:,} true negatives, and "
+        f"{matrix['false_positive']:,} false positives."
+    )
+
+with st.expander("Model and dataset details"):
+    st.write(f"**Selected model:** {bundle['model_name']}")
+    st.write(
+        "**Dataset:** CDC Diabetes Health Indicators, cleaned BRFSS 2015 binary "
+        "dataset (253,680 survey responses)."
+    )
+    st.write(
+        "The positive target combines survey respondents labeled as having "
+        "prediabetes or diabetes. The model finds associations in self-reported, "
+        "cross-sectional survey data; it does not establish causes or predict "
+        "future disease."
     )

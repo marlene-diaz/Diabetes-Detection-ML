@@ -1,60 +1,58 @@
+"""Create a few focused exploratory plots for the BRFSS dataset.
+
+This is deliberately a small EDA script rather than a large notebook. It answers
+three beginner questions:
+
+1. How imbalanced is the target?
+2. How does the positive rate vary with general health?
+3. How does the positive rate vary with age group?
+
+Run:
+    python -m notebooks.visualization
 """
-visualization.py
 
-Plots histogram distributions for each feature in the Pima Indians
-Diabetes dataset (diabetes.csv).
+from pathlib import Path
 
-Dataset: https://www.kaggle.com/datasets/mathchi/diabetes-data-set
-"""
+import matplotlib
 
-import pandas as pd
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import pandas as pd
 
-# Column names for this dataset (the Kaggle CSV already has a header row,
-# but this list is kept for clarity / reuse in other scripts)
-COLUMNS = [
-    "Pregnancies",
-    "Glucose",
-    "BloodPressure",
-    "SkinThickness",
-    "Insulin",
-    "BMI",
-    "DiabetesPedigreeFunction",
-    "Age",
-    "Outcome",
-]
+from src.schema import TARGET_COLUMN, load_and_validate_data
 
-# Columns where a value of 0 actually represents a missing measurement
-ZERO_AS_MISSING = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
-
-DATA_PATH = "data/diabetes.csv"
+ROOT = Path(__file__).resolve().parents[1]
+DATA_PATH = ROOT / "data" / "diabetes_binary_health_indicators_BRFSS2015.csv"
+OUTPUT_PATH = ROOT / "notebooks" / "brfss_eda.png"
 
 
-def load_data(path: str = DATA_PATH) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    return df
+def main() -> None:
+    data, report = load_and_validate_data(DATA_PATH)
+    print(pd.Series(report).to_string())
 
+    figure, axes = plt.subplots(1, 3, figsize=(15, 4.5))
 
-def plot_distributions(df: pd.DataFrame):
-    fig, axes = plt.subplots(3, 3, figsize=(12, 10))
-    fig.suptitle("Distribution of Features — Pima Indians Diabetes Dataset", fontsize=14)
+    counts = data[TARGET_COLUMN].value_counts().sort_index()
+    axes[0].bar(["No diabetes", "Prediabetes/\ndiabetes"], counts.values)
+    axes[0].set_title("Target class counts")
+    axes[0].set_ylabel("Survey responses")
 
-    for ax, col in zip(axes.flatten(), COLUMNS):
-        title = f"{col} (0 = missing)" if col in ZERO_AS_MISSING else col
-        ax.hist(df[col], bins=20, edgecolor="white")
-        ax.set_title(title, fontsize=10)
-        ax.set_xlabel(col)
-        ax.set_ylabel("Frequency")
+    general_health = data.groupby("GenHlth")[TARGET_COLUMN].mean()
+    axes[1].bar(general_health.index.astype(str), general_health.values)
+    axes[1].set_title("Positive rate by general health")
+    axes[1].set_xlabel("1 = excellent, 5 = poor")
+    axes[1].set_ylabel("Positive-class proportion")
 
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig("notebooks/feature_distributions.png", dpi=150)
-    plt.show()
+    age = data.groupby("Age")[TARGET_COLUMN].mean()
+    axes[2].plot(age.index, age.values, marker="o")
+    axes[2].set_title("Positive rate by age group")
+    axes[2].set_xlabel("Age category (1 = youngest, 13 = oldest)")
+    axes[2].set_ylabel("Positive-class proportion")
 
-
-def main():
-    df = load_data()
-    print(df.describe())
-    plot_distributions(df)
+    figure.suptitle("BRFSS 2015 Diabetes Health Indicators")
+    figure.tight_layout()
+    figure.savefig(OUTPUT_PATH, dpi=150)
+    print(f"\nSaved {OUTPUT_PATH.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,315 @@
+{
+  "model_name": "Logistic Regression",
+  "selection_reason": "Logistic Regression was selected because its mean cross-validated ROC-AUC (0.823) was within 0.01 of the strongest model (Random Forest, 0.826), while remaining easier to explain.",
+  "dataset": {
+    "rows": 253680,
+    "features": 21,
+    "positive_rows": 35346,
+    "negative_rows": 218334,
+    "positive_rate": 0.13933301797540207,
+    "missing_values": 0,
+    "identical_rows": 24206,
+    "identical_rows_removed": 0,
+    "path": "data/diabetes_binary_health_indicators_BRFSS2015.csv",
+    "sha256": "19f367e3e3350768f0c144c5d73ee5b355f67a57eaaa86ca7bd8aec594d8b1d0"
+  },
+  "split": {
+    "random_state": 42,
+    "test_fraction": 0.2,
+    "training_rows": 202944,
+    "test_rows": 50736,
+    "stratified": true
+  },
+  "cross_validation": {
+    "folds": 5,
+    "training_set_only": true,
+    "models": {
+      "Logistic Regression": {
+        "accuracy_mean": 0.8638639260259197,
+        "accuracy_std": 0.0008346561510595069,
+        "precision_mean": 0.5390787313107428,
+        "precision_std": 0.009760764616167284,
+        "recall_mean": 0.15797245431250212,
+        "recall_std": 0.006557016731242516,
+        "f1_mean": 0.24429738168665546,
+        "f1_std": 0.008522982982047657,
+        "roc_auc_mean": 0.8227663382514205,
+        "roc_auc_std": 0.001396096739719182,
+        "pr_auc_mean": 0.4075567460797352,
+        "pr_auc_std": 0.00434495396597987
+      },
+      "Decision Tree": {
+        "accuracy_mean": 0.8646818889137435,
+        "accuracy_std": 0.0009859464299500388,
+        "precision_mean": 0.5671453867675853,
+        "precision_std": 0.026367174300467564,
+        "recall_mean": 0.12840910085703533,
+        "recall_std": 0.017349544611618865,
+        "f1_mean": 0.2084474567406974,
+        "f1_std": 0.0229424396879274,
+        "roc_auc_mean": 0.8045156387686792,
+        "roc_auc_std": 0.0033063550234664154,
+        "pr_auc_mean": 0.37614350463278534,
+        "pr_auc_std": 0.0072482524145928325
+      },
+      "Random Forest": {
+        "accuracy_mean": 0.865898967675357,
+        "accuracy_std": 0.00044414586342594414,
+        "precision_mean": 0.6290636496544753,
+        "precision_std": 0.013792320351257596,
+        "recall_mean": 0.09173521823573036,
+        "recall_std": 0.0024722163247174185,
+        "f1_mean": 0.16009536182217163,
+        "f1_std": 0.003716633159283491,
+        "roc_auc_mean": 0.8263980646878302,
+        "roc_auc_std": 0.0021224593092452333,
+        "pr_auc_mean": 0.4291142127540102,
+        "pr_auc_std": 0.006095952017651443
+      }
+    }
+  },
+  "threshold_selection": {
+    "source": "out-of-fold predictions from the training set only",
+    "minimum_screening_recall": 0.7,
+    "low_band_target_recall": 0.9,
+    "low_threshold": 0.07951677883934616,
+    "screening_threshold": 0.17084708059864764,
+    "screening_threshold_training_recall": 0.7000035364430456,
+    "screening_threshold_training_precision": 0.33755691604563515,
+    "screening_threshold_training_f1": 0.4554742510009664,
+    "medical_cutoffs": false
+  },
+  "test_metrics": {
+    "threshold": 0.17084708059864764,
+    "accuracy": 0.7666154210028382,
+    "balanced_accuracy": 0.7372591746296804,
+    "precision": 0.33679890560875514,
+    "recall": 0.6965624557928985,
+    "specificity": 0.7779558934664621,
+    "f1": 0.4540550509474849,
+    "roc_auc": 0.8191626274264764,
+    "pr_auc": 0.39422856330541106,
+    "brier_score": 0.09995080549314478,
+    "confusion_matrix": {
+      "true_negative": 33971,
+      "false_positive": 9696,
+      "false_negative": 2145,
+      "true_positive": 4924
+    },
+    "test_examples": 50736,
+    "test_positive_examples": 7069
+  },
+  "default_0_5_threshold_test_metrics": {
+    "threshold": 0.5,
+    "accuracy": 0.8621294544307789,
+    "balanced_accuracy": 0.567182836883248,
+    "precision": 0.517097966728281,
+    "recall": 0.15829678879615222,
+    "specificity": 0.9760688849703437,
+    "f1": 0.24239142207299902,
+    "roc_auc": 0.8191626274264764,
+    "pr_auc": 0.39422856330541106,
+    "brier_score": 0.09995080549314478,
+    "confusion_matrix": {
+      "true_negative": 42622,
+      "false_positive": 1045,
+      "false_negative": 5950,
+      "true_positive": 1119
+    },
+    "test_examples": 50736,
+    "test_positive_examples": 7069
+  },
+  "simple_baselines": {
+    "always_predict_negative_accuracy": 0.8606709239987386,
+    "always_predict_negative_recall": 0.0,
+    "training_prevalence_probability": 0.13933400346893723,
+    "constant_prevalence_brier_score": 0.11991648460617611
+  },
+  "subgroup_audit": {
+    "Sex group": [
+      {
+        "group": "Female survey code",
+        "rows": 28531,
+        "positive_rows": 3685,
+        "accuracy": 0.7843748904700151,
+        "precision": 0.3364709001723452,
+        "recall": 0.6887381275440977,
+        "false_positive_rate": 0.20144087579489656
+      },
+      {
+        "group": "Male survey code",
+        "rows": 22205,
+        "positive_rows": 3384,
+        "accuracy": 0.7437964422427381,
+        "precision": 0.3371485092553342,
+        "recall": 0.7050827423167849,
+        "false_positive_rate": 0.2492428670102545
+      }
+    ],
+    "Age group": [
+      {
+        "group": "18\u201339",
+        "rows": 7749,
+        "positive_rows": 258,
+        "accuracy": 0.9470899470899471,
+        "precision": 0.2696969696969697,
+        "recall": 0.3449612403100775,
+        "false_positive_rate": 0.03217193966092644
+      },
+      {
+        "group": "40\u201359",
+        "rows": 18361,
+        "positive_rows": 1949,
+        "accuracy": 0.831926365666358,
+        "precision": 0.3386318478569401,
+        "recall": 0.612108773730118,
+        "false_positive_rate": 0.14196929076285644
+      },
+      {
+        "group": "60 or older",
+        "rows": 24626,
+        "positive_rows": 4862,
+        "accuracy": 0.6611305124664988,
+        "precision": 0.3382557815547506,
+        "recall": 0.7490744549568079,
+        "false_positive_rate": 0.36050394656952034
+      }
+    ],
+    "Income group": [
+      {
+        "group": "Below $20,000",
+        "rows": 7428,
+        "positive_rows": 1811,
+        "accuracy": 0.6233171782444803,
+        "precision": 0.37823834196891193,
+        "recall": 0.8464936499171728,
+        "false_positive_rate": 0.448638063022966
+      },
+      {
+        "group": "$20,000\u2013$49,999",
+        "rows": 16445,
+        "positive_rows": 2706,
+        "accuracy": 0.7104895104895105,
+        "precision": 0.3296302437406732,
+        "recall": 0.7346637102734663,
+        "false_positive_rate": 0.2942717810612126
+      },
+      {
+        "group": "$50,000 or more",
+        "rows": 26863,
+        "positive_rows": 2552,
+        "accuracy": 0.8405985928600678,
+        "precision": 0.30930335097001765,
+        "recall": 0.5497648902821317,
+        "false_positive_rate": 0.12887170416683805
+      }
+    ]
+  },
+  "permutation_importance": [
+    {
+      "feature": "GenHlth",
+      "importance_mean": 0.06100456220389542,
+      "importance_std": 0.0036224584188606934
+    },
+    {
+      "feature": "BMI",
+      "importance_mean": 0.02917374810952637,
+      "importance_std": 0.0016074096005891578
+    },
+    {
+      "feature": "Age",
+      "importance_mean": 0.021195489601350353,
+      "importance_std": 0.0014071622081039319
+    },
+    {
+      "feature": "HighBP",
+      "importance_mean": 0.019001022178772753,
+      "importance_std": 0.002170102481287108
+    },
+    {
+      "feature": "HighChol",
+      "importance_mean": 0.0104092614410215,
+      "importance_std": 0.0008376056023945064
+    },
+    {
+      "feature": "CholCheck",
+      "importance_mean": 0.004632572687494618,
+      "importance_std": 0.000512225428823376
+    },
+    {
+      "feature": "HvyAlcoholConsump",
+      "importance_mean": 0.0034292565947242246,
+      "importance_std": 0.00024424042782690363
+    },
+    {
+      "feature": "Sex",
+      "importance_mean": 0.002238961444085197,
+      "importance_std": 0.0002888097903728669
+    },
+    {
+      "feature": "Income",
+      "importance_mean": 0.0018741243938647696,
+      "importance_std": 0.000563762261716282
+    },
+    {
+      "feature": "HeartDiseaseorAttack",
+      "importance_mean": 0.0010329019014754248,
+      "importance_std": 0.00028558152232345085
+    },
+    {
+      "feature": "DiffWalk",
+      "importance_mean": 0.0007730122522192259,
+      "importance_std": 0.00020650905588704308
+    },
+    {
+      "feature": "Stroke",
+      "importance_mean": 0.00029974626570528073,
+      "importance_std": 3.2834498308766596e-05
+    },
+    {
+      "feature": "Education",
+      "importance_mean": 0.00020715135208911514,
+      "importance_std": 0.0001332956371444529
+    },
+    {
+      "feature": "PhysHlth",
+      "importance_mean": 0.0002018315661060921,
+      "importance_std": 0.0002263211533792895
+    },
+    {
+      "feature": "MentHlth",
+      "importance_mean": 0.00016657057629165806,
+      "importance_std": 3.8834133143710285e-05
+    },
+    {
+      "feature": "Fruits",
+      "importance_mean": 0.00015598670889075775,
+      "importance_std": 0.00011729283078859531
+    },
+    {
+      "feature": "Veggies",
+      "importance_mean": 8.010316485496105e-05,
+      "importance_std": 7.753422169600038e-06
+    },
+    {
+      "feature": "NoDocbcCost",
+      "importance_mean": 7.373891827307706e-05,
+      "importance_std": 3.429325801256393e-05
+    },
+    {
+      "feature": "AnyHealthcare",
+      "importance_mean": 1.6363216047476925e-05,
+      "importance_std": 7.86487778937531e-05
+    },
+    {
+      "feature": "Smoker",
+      "importance_mean": 1.095987321653169e-05,
+      "importance_std": 6.6444187359063085e-06
+    },
+    {
+      "feature": "PhysActivity",
+      "importance_mean": -2.3757997086574594e-05,
+      "importance_std": 4.9744055924305785e-05
+    }
+  ]
+}
